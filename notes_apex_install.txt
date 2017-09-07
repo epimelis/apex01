@@ -1,0 +1,152 @@
+============================
+Install Oracle XE 
+============================
+Download Oracle XE 11g 11.2.2
+
+=============================
+Upgrade Apex
+=============================
+
+Download Apex 5.1.2
+http://www.oracle.com/technetwork/developer-tools/apex/downloads/index.html
+
+Upgrade Apex
+http://www.oracle.com/technetwork/developer-tools/apex/application-express/upgrade-apex-for-xe-154969.html
+https://oracle-base.com/articles/misc/oracle-application-express-apex-5-0-installation#installation
+https://mikesmithers.wordpress.com/2015/05/25/upgrading-to-apex-5-on-oracle-xe-11g/
+
+
+C:\oraclexe\app\oracle\product\11.2.0\server\bin\sqlplus.exe
+
+CONNECT SYS as SYSDBA
+@apexins SYSAUX SYSAUX TEMP /i/
+
+----------------------------
+Thank you for installing Oracle Application Express 5.1.2.00.09
+
+Oracle Application Express is installed in the APEX_050100 schema.
+
+The structure of the link to the Application Express administration services is as follows:
+http://host:port/pls/apex/apex_admin (Oracle HTTP Server with mod_plsql)
+http://host:port/apex/apex_admin     (Oracle XML DB HTTP listener with the embedded PL/SQL gateway)
+http://host:port/apex/apex_admin     (Oracle REST Data Services)
+
+The structure of the link to the Application Express development interface is as follows:
+http://host:port/pls/apex (Oracle HTTP Server with mod_plsql)
+http://host:port/apex     (Oracle XML DB HTTP listener with the embedded PL/SQL gateway)
+http://host:port/apex     (Oracle REST Data Services)
+----------------------------
+
+@apxchpwd.sql
+ADMIN/<passwd>
+
+----------------------------
+
+@apex_rest_config.sql
+Enter a password for the APEX_LISTENER user               		<passwd>
+Enter a password for the APEX_REST_PUBLIC_USER user            <passwd>
+ 
+-----------------------------
+--Embedded PL/SQL gateway (EPG) configuration
+
+@apex_epg_config.sql /apex_5.1.2  <--Note : Windows directory is c:\apex_5.1.2 where Apex software is unzipped into.
+
+--Unlock users and set http ports
+
+select account_status from dba_users where username = 'ANONYMOUS';
+alter user apex_public_user account unlock;
+
+select account_status from dba_users where username = 'APEX_PUBLIC_USER'; <--this should already be OPEN
+
+select dbms_xdb.gethttpport from dual;
+EXEC DBMS_XDB.sethttpport(4000);
+
+
+http://localhost:4000/apex/apex_admin
+
+
+
+==================================================================
+Useful queries
+
+select banner
+from v$version
+where banner like 'Oracle Database%';
+ 
+select comp_name, version, status
+from dba_registry
+where comp_id = 'XDB';
+
+==================================================================
+Manage tablespaces
+ 
+select default_tablespace
+  from dba_users
+  where username = 'FLOWS_FILES';
+
+
+select * from sys.dba_data_files;
+
+C:\ORACLEXE\APP\ORACLE\ORADATA\XE\SYSTEM.DBF
+C:\ORACLEXE\APP\ORACLE\ORADATA\XE\SYSAUX.DBF
+
+
+ALTER TABLESPACE "SYSTEM" 
+ADD 
+DATAFILE 'C:\ORACLEXE\APP\ORACLE\ORADATA\XE\SYSTEM2.DBF' SIZE 250000K 
+REUSE AUTOEXTEND 
+ON NEXT 10240K MAXSIZE 32767M;
+
+
+ALTER TABLESPACE "SYSAUX" 
+ADD 
+DATAFILE 'C:\ORACLEXE\APP\ORACLE\ORADATA\XE\SYSAUX2.DBF' SIZE 250000K 
+REUSE AUTOEXTEND 
+ON NEXT 10240K MAXSIZE 32767M;
+
+/*
+Here is an example: 
+
+ALTER TABLESPACE "USERS" 
+ADD 
+DATAFILE 'D:\ORACLE\ORADATA\PROTECT\USERS02.DBF' SIZE 138240K 
+REUSE AUTOEXTEND 
+ON NEXT 10240K MAXSIZE 32767M;
+*/
+
+select * from all_users;
+
+drop user APEX_050100 cascade;
+
+
+select
+   fs.tablespace_name                          "Tablespace",
+   (df.totalspace - fs.freespace)              "Used MB",
+   fs.freespace                                "Free MB",
+   df.totalspace                               "Total MB",
+   round(100 * (fs.freespace / df.totalspace)) "Pct. Free"
+from
+   (select
+      tablespace_name,
+      round(sum(bytes) / 1048576) TotalSpace
+   from
+      dba_data_files
+   group by
+      tablespace_name
+   ) df,
+   (select
+      tablespace_name,
+      round(sum(bytes) / 1048576) FreeSpace
+   from
+      dba_free_space
+   group by
+      tablespace_name
+   ) fs
+where
+   df.tablespace_name = fs.tablespace_name;
+   
+   select DISTINCT OWNER from all_OBJECTS;
+   
+SELECT * FROM dba_segments WHERE TABLESPACE_NAME='SYSAUX' ORDER BY bytes DESC;
+
+=======================================
